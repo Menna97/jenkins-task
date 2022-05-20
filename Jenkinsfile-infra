@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+    
+    tools {
+      terraform 'terraform'
+    }
+
+    stages {
+        stage('git checkout') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/Menna97/terraform-infrastructure-aws.git'
+            }
+        }
+        stage('terraform init') {
+            steps {
+                withAWS(credentials: 'aws'){
+                    sh 'terraform init'
+                }
+            }
+        }
+        
+        stage('terraform apply') {
+            steps {
+                withAWS(credentials: 'aws'){
+                    sh 'terraform apply --auto-approve -var-file="prod.tfvars"'
+                }
+            }
+        }
+        
+    }
+}

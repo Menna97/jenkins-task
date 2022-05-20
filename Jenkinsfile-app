@@ -1,0 +1,40 @@
+pipeline {
+    agent {label 'aws'}
+
+    stages {
+        stage('git checkout') {
+            steps {
+                git branch: 'rds_redis',
+                url: 'https://github.com/mahmoud254/jenkins_nodejs_example.git'
+            }
+        }
+        stage('build') {
+            steps {
+                sh 'docker build -f dockerfile . -t menna97/nodejs-db:latest'
+            }
+        }
+        stage('artifact') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'pass', usernameVariable: 'username')]){
+                sh 'docker login -u ${username} -p ${pass}'
+                sh 'docker push menna97/nodejs-db:latest'
+            }
+           }
+        }
+        stage('deploy') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'rds', passwordVariable: 'pass', usernameVariable: 'username')]){
+                sh '''docker run -d -p 3000:3000 \
+                -e RDS_HOSTNAME=terraform-20220520210454938900000001.c5qefjo2ysmx.eu-west-1.rds.amazonaws.com\
+                -e RDS_USERNAME=${username}\
+                -e RDS_PASSWORD=${pass}\
+                -e RDS_PORT=3306\
+                -e REDIS_HOSTNAME=cluster-example.tdwiqo.0001.euw1.cache.amazonaws.com\
+                -e REDIS_PORT=6379\
+                menna97/nodejs-db:latest
+                '''
+                }
+            }
+        }
+    }
+}
